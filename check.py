@@ -3,7 +3,7 @@ import urllib.request
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.whistlerblackcomb.com/plan-your-trip/ski-and-ride-lessons/never-ever-days"
-MARKER = "zzz" #"coming soon"  # compared in lowercase
+MARKER = "coming soon"  # compared in lowercase
 TOPIC = os.environ["NTFY_TOPIC"]
 
 
