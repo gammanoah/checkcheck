@@ -1,21 +1,26 @@
 import os
-import re
 import urllib.request
+from playwright.sync_api import sync_playwright
 
 URL = "https://www.whistlerblackcomb.com/plan-your-trip/ski-and-ride-lessons/never-ever-days"
-MARKER = "Coming Soon"
+MARKER = "coming soon"  # compared in lowercase
 TOPIC = os.environ["NTFY_TOPIC"]
 
 
-def fetch(url):
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "en-CA,en;q=0.9",
-    })
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        print("HTTP status:", resp.status)
-        return resp.read().decode("utf-8", errors="replace")
+def fetch_text():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            locale="en-CA",
+        )
+        page = ctx.new_page()
+        page.goto(URL, wait_until="networkidle", timeout=60000)
+        page.wait_for_timeout(3000)
+        title = page.title()
+        text = page.inner_text("body")
+        browser.close()
+    return title, text
 
 
 def notify(message):
@@ -30,23 +35,23 @@ def notify(message):
 
 def main():
     try:
-        html = fetch(URL)
+        title, text = fetch_text()
     except Exception as e:
         print(f"Fetch failed: {e}")
         return
 
-    title = re.search(r"<title>(.*?)</title>", html, re.S)
-    print("Length:", len(html))
-    print("Title:", title.group(1).strip() if title else None)
-    print("Has 'Never Ever':", "Never Ever" in html)
-    print("Has 'Coming Soon':", "Coming Soon" in html)
-    print("First 300 chars:", html[:300].replace("\n", " "))
+    low = text.lower()
+    print("Title:", title)
+    print("Length:", len(text))
+    print("Has 'never ever':", "never ever" in low)
+    print("Has 'coming soon':", MARKER in low)
+    print("First 300 chars:", text[:300].replace("\n", " "))
 
-    if "Never Ever" not in html:
+    if "never ever" not in low:
         print("Unexpected page content, skipping.")
         return
 
-    if MARKER in html:
+    if MARKER in low:
         print("Still coming soon.")
     else:
         print("Marker is gone - registration may be open!")
