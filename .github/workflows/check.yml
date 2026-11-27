@@ -16,5 +16,5 @@ jobs:
           playwright install --with-deps chromium
       - name: Run checker
         env:
-          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          NTFY_TOPIC: ${{ secrets.new }}
         run: python3 check.py
